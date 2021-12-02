@@ -9,6 +9,7 @@ import { SeqViz } from "./viewer";
 import SeqViewer from "./SeqViz/SeqViewer";
 import SeqBlock from "./SeqViz/Linear/SeqBlock/SeqBlock";
 import Linear from "./SeqViz/Linear/Linear";
+import { Edges } from "./SeqViz/Linear/SeqBlock/Selection";
 
 const defaultProps = {
   name: "test_part",
@@ -21,7 +22,7 @@ const defaultProps = {
     }
   ],
   style: { height: 200, width: 400 },
-  size: { height: 200, width: 400 }
+  size: { height: 200, width: 400 },
 };
 
 describe("SeqViz rendering (React)", () => {
@@ -198,6 +199,41 @@ describe("SeqViz rendering (React)", () => {
         .first()
         .text()
     ).toContain(seq.substring(0, 30));
+  });
+
+  it("renders with a selection input and updates central index", async () => {
+    const firstSelection = {
+      type: "EXTERNAL",
+      start: 2,
+      end: 8,
+      clockwise: true,
+      ref: "",
+    }
+    const seq = "ATGGTAGTTAGATAGGGATACCGAT";
+
+    // @ts-expect-error ts-migrate(2322) FIXME: Type '{ seq: string; viewer: "linear"; name: strin... Remove this comment to see the full error message
+    const wrapper = mount(<SeqViz {...defaultProps} seq={seq} viewer="linear" selection={firstSelection}/>);
+
+    // @ts-expect-error ts-migrate(2722) FIXME: Cannot invoke an object which is possibly 'undefin... Remove this comment to see the full error message
+    await wrapper.instance().componentDidMount();
+
+    expect(wrapper.find(Edges).find('rect')).toHaveLength(2);
+
+    // Need to understand how we want to handle these types of issues, so following the convention for now:
+    // @ts-expect-error FIXME: Property 'centralIndex' does not exist on type 'Readonly<{... Remove this comment to see the full error message
+    expect(wrapper.state().centralIndex.linear).toBe(firstSelection.start)
+
+    const secondSelection = {
+      type: "EXTERNAL",
+      start: 10,
+      end: 15,
+      clockwise: true,
+      ref: "",
+    }
+    wrapper.setProps({selection: secondSelection})
+    expect(wrapper.find(Edges).find('rect')).toHaveLength(2);
+    // @ts-expect-error FIXME: Property 'centralIndex' does not exist on type 'Readonly<{... Remove this comment to see the full error message
+    expect(wrapper.state().centralIndex.linear).toBe(secondSelection.start)
   });
 
   // it("re-renders the viewer with a changed File object", async () => {

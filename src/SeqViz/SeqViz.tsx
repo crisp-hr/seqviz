@@ -53,6 +53,13 @@ export interface SeqVizProps {
     query: string;
     mismatch: number;
   };
+  selection: { // allow selection to be set externally
+      type: string,
+      start: number,
+      end: number,
+      clockwise: boolean,
+      ref: string,
+  };
   showComplement: boolean;
   showIndex: boolean;
   showPrimers: boolean;
@@ -83,6 +90,7 @@ export default class SeqViz extends React.Component<SeqVizProps, any> {
     name: "",
     onSearch: results => results,
     onSelection: selection => selection,
+    selection: { ...defaultSelection},
     rotateOnScroll: true,
     search: { query: "", mismatch: 0 },
     seq: "",
@@ -102,11 +110,11 @@ export default class SeqViz extends React.Component<SeqVizProps, any> {
       accession: "",
       centralIndex: {
         circular: 0,
-        linear: 0,
+        linear: props.selection.start,
         setCentralIndex: this.setCentralIndex
       },
       cutSites: [],
-      selection: { ...defaultSelection },
+      selection: props.selection,
       search: [],
       annotations: this.parseAnnotations(props.annotations, props.seq),
       part: {}
@@ -118,7 +126,7 @@ export default class SeqViz extends React.Component<SeqVizProps, any> {
   };
 
   componentDidUpdate = async (
-    { accession = "", annotations, backbone, enzymes, enzymesCustom, file, search }: SeqVizProps,
+    { accession = "", annotations, backbone, enzymes, enzymesCustom, file, search, selection }: SeqVizProps,
     { part }
   ) => {
     if (accession !== this.props.accession || backbone !== this.props.backbone || file !== this.props.file) {
@@ -126,6 +134,9 @@ export default class SeqViz extends React.Component<SeqVizProps, any> {
     }
     if (search.query !== this.props.search.query || search.mismatch !== this.props.search.mismatch) {
       this.search(part); // new search parameters
+    }
+    if (!isEqual(selection, this.props.selection)) {
+      this.setSelection(this.props.selection);
     }
     if (!isEqual(enzymes, this.props.enzymes)) {
       this.cut(part); // new set of enzymes for digest
@@ -248,12 +259,19 @@ export default class SeqViz extends React.Component<SeqVizProps, any> {
   };
 
   /**
-   * Update selection in state. Should only be performed from handlers/selection.jsx
+   * Update selection in state. Should only be performed from handlers/selection.jsx, or here for external selection
+   * External selection skips callback and metadata calc, caller already knows the selection, wants to reflect changes in UI
    */
   setSelection = selection => {
     const { onSelection } = this.props;
 
     this.setState({ selection });
+
+    if (selection.type === "EXTERNAL") {
+      this.setCentralIndex("linear", selection.start);
+      // User has set selection externally, so no need for callback in this instance
+      return
+    }
 
     onSelection(selection);
   };
